@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - GrabCredit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f5a623;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        .navbar-custom {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-custom .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: white !important;
+        }
+        
+        .navbar-custom a {
+            color: white !important;
+        }
+        
+        .container-main {
+            padding: 2rem 0;
+        }
+        
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        
+        .page-header h1 {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .merchants-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            background-color: #f5f6fa;
+            border-bottom: 2px solid #e0e6ed;
+            font-weight: 600;
+            color: #2c3e50;
+            padding: 1.2rem;
+        }
+        
+        .table td {
+            padding: 1.2rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #e0e6ed;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tier-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tier-1 {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .tier-2 {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .tier-3 {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .decision-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .decision-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .decision-conditions {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .decision-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .btn-view {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-view:hover {
+            background-color: #e89a1f;
+            text-decoration: none;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: white;
+            border-radius: 8px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state p {
+            margin-bottom: 0;
+        }
+        
+        .score-display {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .footer-nav {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e6ed;
+            text-align: center;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-lg">
+            <span class="navbar-brand">📊 GrabCredit AI Underwriting</span>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-item nav-text" style="color: white; font-size: 0.9rem;">
+                    Dashboard
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-lg container-main">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Merchant Underwriting Dashboard</h1>
+            <p class="text-muted">View all merchants and their underwriting decisions</p>
+        </div>
+
+        <!-- Merchants Table -->
+        {% if merchants_data %}
+        <div class="merchants-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%">Merchant ID</th>
+                        <th style="width: 15%">Monthly Revenue</th>
+                        <th style="width: 12%">Credit Score</th>
+                        <th style="width: 12%">Risk Tier</th>
+                        <th style="width: 15%">Decision</th>
+                        <th style="width: 10%">Score</th>
+                        <th style="width: 12%">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in merchants_data %}
+                    {% set merchant = item.merchant %}
+                    {% set risk_score = item.risk_score %}
+                    <tr>
+                        <td>
+                            <strong>{{ merchant.merchant_id }}</strong>
+                        </td>
+                        <td>${{ "{:,}".format(merchant.monthly_revenue|int) }}</td>
+                        <td>{{ merchant.credit_score }}</td>
+                        <td>
+                            {% if risk_score %}
+                                <span class="tier-badge {% if risk_score.risk_tier == 'Tier 1' %}tier-1{% elif risk_score.risk_tier == 'Tier 2' %}tier-2{% else %}tier-3{% endif %}">
+                                    {{ risk_score.risk_tier }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if risk_score %}
+                                {% set decision_class = 'decision-approved' if 'APPROVED' in risk_score.decision else ('decision-conditions' if 'CONDITIONS' in risk_score.decision else 'decision-rejected') %}
+                                <span class="decision-badge {{ decision_class }}">
+                                    {% if risk_score.decision == 'APPROVED_WITH_CONDITIONS' %}
+                                        Conditions
+                                    {% else %}
+                                        {{ risk_score.decision }}
+                                    {% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if risk_score %}
+                                <span class="score-display">{{ risk_score.risk_score }}/100</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/dashboard/{{ merchant.merchant_id }}" class="btn-view">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No merchants found. Process underwriting requests via API to populate this list.</p>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="footer-nav">
+            <p>
+                <small>
+                    Total Merchants: <strong>{{ merchants_data|length }}</strong> |
+                    Last Updated: <strong>{{ now() }}</strong>
+                </small>
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background-color: #2c3e50; color: white; padding: 2rem 0; margin-top: 3rem; text-align: center;">
+        <p style="margin-bottom: 0;"><small>GrabCredit AI Underwriting Agent | Production Dashboard</small></p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

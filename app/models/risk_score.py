@@ -7,6 +7,7 @@ class RiskScore(Base):
     SQLAlchemy model for risk assessment results.
     
     Stores underwriting decision and risk scoring for a merchant.
+    Tracks offer acceptance status for dashboard simulation.
     """
     __tablename__ = "risk_scores"
 
@@ -16,3 +17,5 @@ class RiskScore(Base):
     risk_tier = Column(String, nullable=False)
     decision = Column(String, nullable=False)
     explanation = Column(String, nullable=False)
+    offer_status = Column(String, default="PENDING", nullable=False)  # PENDING | ACCEPTED | REJECTED
+
