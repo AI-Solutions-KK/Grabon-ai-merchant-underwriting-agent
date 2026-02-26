@@ -8,6 +8,9 @@ Provides:
 """
 
 import logging
+import os
+from pathlib import Path
+from datetime import datetime
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -18,8 +21,12 @@ from app.models.risk_score import RiskScore
 
 logger = logging.getLogger(__name__)
 
-# Initialize templates
-templates = Jinja2Templates(directory="app/templates")
+# Initialize templates with absolute path
+templates_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app", "templates")
+templates = Jinja2Templates(directory=templates_dir)
+
+# Add custom Jinja2 global function for now
+templates.env.globals.update(now=datetime.now)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
