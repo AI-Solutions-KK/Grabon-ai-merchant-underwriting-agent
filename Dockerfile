@@ -1,19 +1,24 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+# Create non-root user matching HF Spaces UID
+RUN useradd -m -u 1000 user
 
-# Install system deps (optional but safe)
-RUN apt-get update && apt-get install -y build-essential
+WORKDIR /code
 
-# Copy project
-COPY . /app
+# Ensure /code is owned by user 1000 so SQLite and any writes succeed
+RUN chown user:user /code
 
-# Install python deps
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy and install deps as root first (faster layer caching)
+COPY requirements.txt /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Expose port (HF uses 7860)
+# Copy project and hand ownership to user 1000
+COPY --chown=user . /code
+
+# Switch to non-root user (required by HF Spaces)
+USER user
+
 EXPOSE 7860
 
-# Start FastAPI
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

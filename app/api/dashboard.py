@@ -62,6 +62,7 @@ def dashboard_home(request: Request, db: Session = Depends(get_db)):
     test_override_enabled = get_config(db, "test_mobile_override_enabled", "false")
     test_mobile_number = get_config(db, "test_mobile_number", "")
     engine_state = get_config(db, "engine_state", "OFF")
+    wa_sandbox_keyword = os.getenv("TWILIO_SANDBOX_KEYWORD", "")
 
     from app.services import monitor_service as _ms
     monitor_running = _ms.is_running()
@@ -78,6 +79,7 @@ def dashboard_home(request: Request, db: Session = Depends(get_db)):
             "test_mobile_number": test_mobile_number,
             "engine_state": engine_state,
             "monitor_running": monitor_running,
+            "wa_sandbox_keyword": wa_sandbox_keyword,
         }
     )
 

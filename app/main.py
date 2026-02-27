@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.api.routes import router
 from app.api.dashboard import router as dashboard_router
@@ -61,8 +61,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Mount static files and templates
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Mount templates
 templates = Jinja2Templates(directory="app/templates")
 
 # Make templates globally available
@@ -76,3 +75,8 @@ app.include_router(admin_router)
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/dashboard/")

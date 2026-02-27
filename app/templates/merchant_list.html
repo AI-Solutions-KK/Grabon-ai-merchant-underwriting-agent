@@ -166,6 +166,99 @@
 
     <div class="page-wrap">
 
+        <!-- ══ WhatsApp Sandbox Test Guide ══ -->
+        <div id="wa-test-banner" style="
+            background: linear-gradient(135deg, #e7f9ee 0%, #f0fdf4 100%);
+            border: 1.5px solid #25D366;
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        ">
+            <button onclick="document.getElementById('wa-test-banner').style.display='none'"
+                style="position:absolute;top:0.75rem;right:1rem;background:none;border:none;font-size:1.2rem;color:#999;cursor:pointer;line-height:1;">✕</button>
+
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.9rem;">
+                <span style="font-size:1.3rem;">💬</span>
+                <span style="font-size:0.75rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#0d6e3b;">
+                    How to Test Live WhatsApp Offers
+                </span>
+            </div>
+
+            <div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start;">
+
+                <!-- QR Code -->
+                <div style="flex-shrink:0;text-align:center;">
+                    {% if wa_sandbox_keyword %}
+                        {% set wa_join_url = "https://wa.me/14155238886?text=join%20" ~ wa_sandbox_keyword %}
+                        {% set qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=130x130&margin=6&data=https%3A%2F%2Fwa.me%2F14155238886%3Ftext%3Djoin%2520" ~ wa_sandbox_keyword %}
+                        <img src="{{ qr_url }}"
+                             alt="Scan to join WhatsApp sandbox"
+                             style="border-radius:10px;border:2px solid #25D366;display:block;" />
+                        <div style="font-size:0.7rem;color:#0d6e3b;font-weight:700;margin-top:0.4rem;">📱 Scan to join</div>
+                    {% else %}
+                        <div style="width:130px;height:130px;border-radius:10px;border:2px dashed #25D366;display:flex;align-items:center;justify-content:center;text-align:center;padding:0.75rem;">
+                            <span style="font-size:0.72rem;color:#555;line-height:1.4;">Set <code>TWILIO_SANDBOX_KEYWORD</code> secret in HF Settings to show QR</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Steps -->
+                <div style="flex:1;min-width:220px;">
+                    <div style="display:grid;gap:0.6rem;">
+
+                        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                            <span style="background:#25D366;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;">1</span>
+                            <div>
+                                <div style="font-size:0.83rem;font-weight:700;color:#1a2035;">Scan QR or open WhatsApp</div>
+                                <div style="font-size:0.78rem;color:#555;">
+                                    Send this message to
+                                    <a href="https://wa.me/14155238886" target="_blank" style="color:#25D366;font-weight:700;">+1 415 523 8886</a>:<br>
+                                    {% if wa_sandbox_keyword %}
+                                        <code style="background:#e8f5e9;padding:0.15rem 0.45rem;border-radius:4px;font-size:0.82rem;color:#0d5e33;font-weight:800;">join {{ wa_sandbox_keyword }}</code>
+                                    {% else %}
+                                        <code style="background:#f0f0f0;padding:0.15rem 0.45rem;border-radius:4px;font-size:0.82rem;color:#555;">join &lt;your-sandbox-keyword&gt;</code>
+                                        <span style="font-size:0.72rem;color:#888;"> — find it at console.twilio.com</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                            <span style="background:#25D366;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;">2</span>
+                            <div>
+                                <div style="font-size:0.83rem;font-weight:700;color:#1a2035;">Add your mobile number to a merchant</div>
+                                <div style="font-size:0.78rem;color:#555;">Click ✏️ next to any merchant's mobile field in the table below and enter your number (e.g. <code>9876543210</code>).</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+                            <span style="background:#25D366;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0;">3</span>
+                            <div>
+                                <div style="font-size:0.83rem;font-weight:700;color:#1a2035;">Run the engine</div>
+                                <div style="font-size:0.78rem;color:#555;">Click <strong>▶ Run Once</strong> above. If that merchant is approved, you'll receive a WhatsApp offer message instantly.</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Direct link -->
+                {% if wa_sandbox_keyword %}
+                <div style="flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:0.5rem;">
+                    <a href="https://wa.me/14155238886?text=join%20{{ wa_sandbox_keyword }}" target="_blank"
+                       style="display:inline-flex;align-items:center;gap:0.5rem;background:#25D366;color:white;padding:0.6rem 1.1rem;border-radius:30px;font-size:0.82rem;font-weight:800;text-decoration:none;box-shadow:0 3px 12px rgba(37,211,102,0.35);white-space:nowrap;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="16" height="16" style="filter:brightness(10);" alt="WhatsApp">
+                        Open in WhatsApp
+                    </a>
+                    <div style="font-size:0.7rem;color:#888;text-align:center;">or scan the QR code</div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+        <!-- ══ End WhatsApp Test Guide ══ -->
+
         <!-- Engine Control Card -->
         <style>
             @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
