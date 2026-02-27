@@ -17,7 +17,14 @@ class ClaudeUnderwritingAgent:
     # System prompt for Claude
     SYSTEM_PROMPT = """You are a financial underwriting analyst for GrabCredit and GrabInsurance.
 Your role is to provide professional, formal explanations for underwriting decisions.
-Be concise, data-driven, and reference specific financial metrics in your analysis."""
+Be concise, data-driven, and reference specific financial AND behavioral metrics in your analysis.
+
+When explaining decisions, consider:
+1. Financial Metrics: Credit score, revenue, years in business, loan history, GMV
+2. Behavioral Metrics: Customer loyalty (return rate), seasonality patterns, deal exclusivity,
+   coupon engagement, customer concentration, order values, refund/return rates
+3. Risk Indicators: Chargeback rates, refund rates suggest transaction risk
+4. Market Position: Category, customer base size, and GMV trends indicate scale and stability"""
     
     def __init__(self):
         """Initialize Claude API client."""
@@ -62,10 +69,10 @@ Be concise, data-driven, and reference specific financial metrics in your analys
         decision: str
     ) -> str:
         """
-        Call Claude API with underwriting context.
+        Call Claude API with underwriting context including behavioral metrics.
         
         Args:
-            merchant_data: Merchant financial information
+            merchant_data: Merchant financial AND behavioral information
             risk_score: Risk score (0-100)
             risk_tier: Risk tier classification
             decision: Underwriting decision
@@ -76,25 +83,74 @@ Be concise, data-driven, and reference specific financial metrics in your analys
         Raises:
             Exception: If API call fails
         """
-        # Build merchant context for Claude
+        # Extract financial metrics
+        merchant_id = merchant_data.get('merchant_id', 'N/A')
+        monthly_revenue = merchant_data.get('monthly_revenue', 0)
+        credit_score = merchant_data.get('credit_score', 0)
+        years_in_business = merchant_data.get('years_in_business', 0)
+        existing_loans = merchant_data.get('existing_loans', 0)
+        past_defaults = merchant_data.get('past_defaults', 0)
+        gmv = merchant_data.get('gmv', 0)
+        refund_rate = merchant_data.get('refund_rate', 0)
+        chargeback_rate = merchant_data.get('chargeback_rate', 0)
+        
+        # Extract behavioral metrics
+        category = merchant_data.get('category', 'General')
+        coupon_redemption_rate = merchant_data.get('coupon_redemption_rate', 0)
+        unique_customer_count = merchant_data.get('unique_customer_count', 0)
+        customer_return_rate = merchant_data.get('customer_return_rate', 0)
+        avg_order_value = merchant_data.get('avg_order_value', 0)
+        seasonality_index = merchant_data.get('seasonality_index', 1.0)
+        deal_exclusivity_rate = merchant_data.get('deal_exclusivity_rate', 0)
+        return_and_refund_rate = merchant_data.get('return_and_refund_rate', 0)
+        
+        # Compute quarterly GMV trend if 12-month history available
+        monthly_gmv_12m = merchant_data.get('monthly_gmv_12m', [])
+        gmv_trend = "Unknown"
+        if monthly_gmv_12m and len(monthly_gmv_12m) >= 4:
+            recent_quarter = sum(monthly_gmv_12m[-3:]) / 3
+            prior_quarter = sum(monthly_gmv_12m[-6:-3]) / 3
+            if prior_quarter > 0:
+                trend_pct = ((recent_quarter - prior_quarter) / prior_quarter) * 100
+                gmv_trend = f"{'Growing' if trend_pct > 0 else 'Declining'} ({trend_pct:+.1f}%)"
+        
+        # Build comprehensive merchant context for Claude
         context = f"""
-Merchant Underwriting Data:
-- Merchant ID: {merchant_data.get('merchant_id', 'N/A')}
-- Monthly Revenue: ${merchant_data.get('monthly_revenue', 0):,.2f}
-- Credit Score: {merchant_data.get('credit_score', 0)}
-- Years in Business: {merchant_data.get('years_in_business', 0)}
-- Existing Loans: {merchant_data.get('existing_loans', 0)}
-- Past Defaults: {merchant_data.get('past_defaults', 0)}
+FINANCIAL PROFILE:
+- Merchant ID: {merchant_id} (Category: {category})
+- Monthly Revenue: ${monthly_revenue:,.2f}
+- Gross Merchandise Value (GMV): ${gmv:,.2f}
+- Credit Score: {credit_score}
+- Years in Business: {years_in_business}
+- Active Loans: {existing_loans}
+- Past Defaults: {past_defaults}
 
-Underwriting Assessment:
+TRANSACTION METRICS:
+- Refund Rate: {refund_rate*100:.1f}%
+- Chargeback Rate: {chargeback_rate*100:.1f}%
+- Return & Refund Rate: {return_and_refund_rate*100:.1f}%
+
+CUSTOMER BEHAVIOR:
+- Unique Customers: {unique_customer_count:,}
+- Customer Return Rate: {customer_return_rate*100:.1f}% (loyalty indicator)
+- Coupon Engagement: {coupon_redemption_rate*100:.1f}%
+- Deal Exclusivity: {deal_exclusivity_rate*100:.1f}%
+- Average Order Value: ${avg_order_value:,.2f}
+- Seasonality Index: {seasonality_index:.2f}x (peak-to-trough volatility)
+- GMV Trend: {gmv_trend}
+
+UNDERWRITING ASSESSMENT:
 - Computed Risk Score: {risk_score}/100
 - Risk Tier: {risk_tier}
 - Decision: {decision}
 
-Task: Generate 3–5 professional sentences explaining why this underwriting decision was made.
-Must reference at least 3 specific data points from the merchant profile.
-Use formal, underwriting-appropriate language.
-Return only the explanation text, no additional commentary."""
+TASK: Generate 3–5 professional sentences explaining the underwriting decision.
+REQUIREMENTS:
+1. Reference at least 3 specific financial metrics (credit score, revenue, business age, defaults)
+2. Reference at least 2 behavioral indicators (customer loyalty, transaction quality, seasonality)
+3. Explain how these metrics support the {risk_tier} classification
+4. Maintain formal, underwriting-professional language
+5. Return ONLY the explanation text, no additional commentary or headers"""
 
         # Call Claude API
         message = self.client.messages.create(
@@ -124,9 +180,10 @@ Return only the explanation text, no additional commentary."""
     ) -> str:
         """
         Fallback explanation if Claude fails.
+        Incorporates both financial and behavioral metrics.
         
         Args:
-            merchant_data: Merchant financial information
+            merchant_data: Merchant financial and behavioral information
             risk_score: Risk score (0-100)
             risk_tier: Risk tier classification
             decision: Underwriting decision
@@ -141,12 +198,27 @@ Return only the explanation text, no additional commentary."""
         defaults = merchant_data.get('past_defaults', 0)
         years = merchant_data.get('years_in_business', 0)
         
+        # Behavioral metrics
+        customer_return_rate = merchant_data.get('customer_return_rate', 0)
+        chargeback_rate = merchant_data.get('chargeback_rate', 0)
+        refund_rate = merchant_data.get('refund_rate', 0)
+        unique_customers = merchant_data.get('unique_customer_count', 0)
+        
+        # Build behavioral insight
+        behavioral_insight = ""
+        if unique_customers > 0:
+            behavioral_insight += f"With {unique_customers:,} unique customers and {customer_return_rate*100:.0f}% returning, "
+        if chargeback_rate > 0 or refund_rate > 0:
+            behavioral_insight += f"transaction quality shows {chargeback_rate*100:.1f}% chargeback and {refund_rate*100:.1f}% refund rates. "
+        if not behavioral_insight:
+            behavioral_insight = "Behavioral metrics align with the risk profile. "
+        
         fallback = (
-            f"Merchant {merchant_id} has been classified as {risk_tier} with a computed risk score of {risk_score}/100. "
-            f"The decision to {decision.lower().replace('_', ' ')} is based on key financial metrics: "
-            f"credit score of {credit_score}, monthly revenue of ${revenue:,.0f}, "
-            f"{years} years in business, and {defaults} past defaults. "
-            f"This merchant profile aligns with {risk_tier} underwriting criteria."
+            f"Merchant {merchant_id} has been assessed with a risk score of {risk_score}/100, "
+            f"classified as {risk_tier}. The decision to {decision.lower().replace('_', ' ')} is supported by: "
+            f"credit score of {credit_score}, monthly revenue of ${revenue:,.0f}, {years} years in operations, "
+            f"and {defaults} historical defaults. {behavioral_insight}"
+            f"This profile aligns with {risk_tier} underwriting standards."
         )
         
         return fallback

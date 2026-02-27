@@ -303,6 +303,112 @@
             font-size: 0.8rem;
             margin-top: 0.25rem;
         }
+
+        /* Mode Toggle Styles */
+        .mode-toggle-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .mode-toggle-btn {
+            padding: 0.7rem 1.5rem;
+            border: 2px solid #e0e6ed;
+            background: white;
+            color: #2c3e50;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-toggle-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .mode-toggle-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Financial Offer Card Styles */
+        .offer-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #e0e6ed;
+            margin-bottom: 1.5rem;
+        }
+
+        .offer-card.credit {
+            border-top: 4px solid #3498db;
+        }
+
+        .offer-card.insurance {
+            border-top: 4px solid #9b59b6;
+        }
+
+        .offer-card.unavailable {
+            opacity: 0.6;
+            background: #f8f9fa;
+        }
+
+        .offer-card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .offer-card-title.credit {
+            color: #3498db;
+        }
+
+        .offer-card-title.insurance {
+            color: #9b59b6;
+        }
+
+        .offer-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .offer-detail-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .offer-detail-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .offer-detail-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .offer-empty {
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 6px;
+            color: #7f8c8d;
+        }
     </style>
 </head>
 <body>
@@ -428,6 +534,165 @@
             </div>
         </div>
 
+        <!-- Mode Toggle Section -->
+        {% if risk_score.decision != 'REJECTED' and risk_score.financial_offer %}
+        <div class="card-section">
+            <h2 class="section-title">Financial Offer Selection</h2>
+            
+            <p style="color: #7f8c8d; margin-bottom: 1.5rem;">
+                Select the type of financial offer you want to view. Available options are based on the merchant's risk profile.
+            </p>
+            
+            <div class="mode-toggle-group">
+                {% if risk_score.financial_offer.credit %}
+                <button class="mode-toggle-btn active" data-mode="credit" onclick="selectMode('credit')">
+                    💳 GrabCredit Offer
+                </button>
+                {% endif %}
+                
+                {% if risk_score.financial_offer.insurance %}
+                <button class="mode-toggle-btn {% if not risk_score.financial_offer.credit %}active{% endif %}" data-mode="insurance" onclick="selectMode('insurance')">
+                    🛡️ GrabInsurance Offer
+                </button>
+                {% endif %}
+                
+                {% if risk_score.financial_offer.credit and risk_score.financial_offer.insurance %}
+                <button class="mode-toggle-btn" data-mode="both" onclick="selectMode('both')">
+                    📋 View Both
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Financial Offers Section -->
+        {% if risk_score.decision != 'REJECTED' and risk_score.financial_offer %}
+        <div class="card-section">
+            <h2 class="section-title">Financial Offers</h2>
+            
+            <!-- Credit Offer -->
+            <div id="credit-offer" class="offer-card credit" style="{% if risk_score.financial_offer.credit %}display: block;{% else %}display: none;{% endif %}">
+                {% if risk_score.financial_offer.credit %}
+                <div class="offer-card-title credit">
+                    💳 GrabCredit Offer
+                </div>
+                
+                <div class="offer-details-grid">
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Credit Limit</div>
+                        <div class="offer-detail-value">₹{{ "{:,}".format((risk_score.financial_offer.credit.credit_limit_lakhs * 100000)|int) }}</div>
+                        <small style="color: #7f8c8d;">{{ risk_score.financial_offer.credit.credit_limit_lakhs }} Lakhs</small>
+                    </div>
+                    
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Interest Rate</div>
+                        <div class="offer-detail-value">{{ risk_score.financial_offer.credit.interest_rate_percent }}%</div>
+                        <small style="color: #7f8c8d;">Per Annum</small>
+                    </div>
+                    
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Tenure Options</div>
+                        <div class="offer-detail-value">{{ risk_score.financial_offer.credit.tenure_options_months|join(', ') }}</div>
+                        <small style="color: #7f8c8d;">Months</small>
+                    </div>
+                </div>
+                
+                <div style="padding: 1rem; background: #e3f2fd; border-radius: 6px; margin-top: 1rem;">
+                    <strong>Available Tenures:</strong> 
+                    {% for tenure in risk_score.financial_offer.credit.tenure_options_months %}
+                        <span style="display: inline-block; background: white; padding: 0.5rem 1rem; border-radius: 4px; margin: 0.25rem; margin-right: 0.5rem;">
+                            {{ tenure }} months
+                        </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="offer-empty">
+                    <p>GrabCredit offer not available for this merchant</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Insurance Offer -->
+            <div id="insurance-offer" class="offer-card insurance" style="{% if risk_score.financial_offer.insurance %}display: block;{% else %}display: none;{% endif %}">
+                {% if risk_score.financial_offer.insurance %}
+                <div class="offer-card-title insurance">
+                    🛡️ GrabInsurance Offer
+                </div>
+                
+                <div class="offer-details-grid">
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Coverage Amount</div>
+                        <div class="offer-detail-value">₹{{ "{:,}".format((risk_score.financial_offer.insurance.coverage_amount_lakhs * 100000)|int) }}</div>
+                        <small style="color: #7f8c8d;">{{ risk_score.financial_offer.insurance.coverage_amount_lakhs }} Lakhs</small>
+                    </div>
+                    
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Annual Premium</div>
+                        <div class="offer-detail-value">₹{{ "{:,}".format(risk_score.financial_offer.insurance.premium_amount|int) }}</div>
+                        <small style="color: #7f8c8d;">Per Year</small>
+                    </div>
+                    
+                    <div class="offer-detail-item">
+                        <div class="offer-detail-label">Policy Type</div>
+                        <div class="offer-detail-value">{{ risk_score.financial_offer.insurance.policy_type }}</div>
+                        <small style="color: #7f8c8d;">{{ risk_score.financial_offer.insurance.policy_type }} Coverage</small>
+                    </div>
+                </div>
+                
+                <div style="padding: 1rem; background: #f3e5f5; border-radius: 6px; margin-top: 1rem;">
+                    <strong>Policy Details:</strong>
+                    <ul style="margin: 0.5rem 0 0 1.5rem; margin-bottom: 0;">
+                        <li>Coverage: ₹{{ "{:,}".format((risk_score.financial_offer.insurance.coverage_amount_lakhs * 100000)|int) }}</li>
+                        <li>Type: {{ risk_score.financial_offer.insurance.policy_type }}</li>
+                        <li>Premium: ₹{{ "{:,}".format(risk_score.financial_offer.insurance.premium_amount|int) }}/year</li>
+                    </ul>
+                </div>
+                {% else %}
+                <div class="offer-empty">
+                    <p>GrabInsurance offer not available for this merchant</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Both Offers Display -->
+            <div id="both-offers" style="display: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="offer-card credit">
+                        {% if risk_score.financial_offer.credit %}
+                        <div class="offer-card-title credit">💳 GrabCredit</div>
+                        <div class="offer-details-grid">
+                            <div class="offer-detail-item">
+                                <div class="offer-detail-label">Limit</div>
+                                <div class="offer-detail-value">₹{{ "{:,}".format((risk_score.financial_offer.credit.credit_limit_lakhs * 100000)|int) }}</div>
+                            </div>
+                            <div class="offer-detail-item">
+                                <div class="offer-detail-label">Rate</div>
+                                <div class="offer-detail-value">{{ risk_score.financial_offer.credit.interest_rate_percent }}%</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="offer-card insurance">
+                        {% if risk_score.financial_offer.insurance %}
+                        <div class="offer-card-title insurance">🛡️ GrabInsurance</div>
+                        <div class="offer-details-grid">
+                            <div class="offer-detail-item">
+                                <div class="offer-detail-label">Coverage</div>
+                                <div class="offer-detail-value">₹{{ "{:,}".format((risk_score.financial_offer.insurance.coverage_amount_lakhs * 100000)|int) }}</div>
+                            </div>
+                            <div class="offer-detail-item">
+                                <div class="offer-detail-label">Premium</div>
+                                <div class="offer-detail-value">₹{{ "{:,}".format(risk_score.financial_offer.insurance.premium_amount|int) }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Actions Section -->
         {% if risk_score.decision != 'REJECTED' and risk_score.offer_status == 'PENDING' %}
         <div class="card-section">
@@ -500,5 +765,21 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Mode toggle functionality
+        function selectMode(mode) {
+            // Update button states
+            document.querySelectorAll('.mode-toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+            
+            // Show/hide offer cards
+            document.getElementById('credit-offer').style.display = mode === 'credit' || mode === 'both' ? 'block' : 'none';
+            document.getElementById('insurance-offer').style.display = mode === 'insurance' || mode === 'both' ? 'block' : 'none';
+            document.getElementById('both-offers').style.display = mode === 'both' ? 'block' : 'none';
+        }
+    </script>
 </body>
 </html>

@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.engines.risk_engine import RiskEngine
 from app.engines.decision_engine import DecisionEngine
+from app.engines.offer_engine import OfferEngine
 from app.schemas.merchant_schema import MerchantInput
 from app.schemas.decision_schema import UnderwritingDecision
 from app.services.merchant_service import MerchantService
@@ -28,28 +29,31 @@ class Orchestrator:
     def process_underwriting(
         merchant: MerchantInput,
         db: Session,
-        whatsapp_number: Optional[str] = None
+        whatsapp_number: Optional[str] = None,
+        mode: Optional[str] = None
     ) -> UnderwritingDecision:
         """
-        Process merchant underwriting request with AI-generated explanations.
+        Process merchant underwriting request with AI-generated explanations and financial offers.
         
         Flow:
         1. Save merchant via MerchantService
         2. Evaluate risk using RiskEngine.evaluate_risk()
         3. Evaluate decision using DecisionEngine.evaluate()
-        4. Generate Claude AI explanation (with fallback)
-        5. Construct UnderwritingDecision with AI-generated explanation
-        6. Save risk result via RiskScoreService
-        7. Send WhatsApp notification (if number provided, non-blocking)
-        8. Return decision
+        4. Calculate financial offer based on mode (credit/insurance)
+        5. Generate Claude AI explanation (with fallback)
+        6. Construct UnderwritingResult with AI-generated explanation and financial offer
+        7. Save risk result via RiskScoreService
+        8. Send WhatsApp notification (if number provided, non-blocking)
+        9. Return decision
         
         Args:
             merchant: MerchantInput containing merchant financial metrics
             db: SQLAlchemy database session
             whatsapp_number: Optional WhatsApp number to send result (format: whatsapp:+91XXXXXXXXXX)
+            mode: Optional mode for financial offer ("credit", "insurance", None for both)
             
         Returns:
-            UnderwritingDecision: Structured underwriting result with AI explanation
+            UnderwritingResult: Structured underwriting result with AI explanation and financial offer
         """
         # Step 1: Save merchant to database
         MerchantService.create_merchant(db, merchant)
@@ -60,7 +64,14 @@ class Orchestrator:
         # Step 3: Evaluate decision based on risk result
         risk_tier, decision, _ = DecisionEngine.evaluate(risk_result)
         
-        # Step 4: Generate Claude AI explanation (with automatic fallback)
+        # Step 4: Calculate financial offer based on mode
+        financial_offer = OfferEngine.calculate_financial_offer(
+            risk_tier=risk_tier,
+            merchant_data=merchant.dict(),
+            mode=mode
+        )
+        
+        # Step 5: Generate Claude AI explanation (with automatic fallback)
         ai_explanation = ClaudeUnderwritingAgent.generate_explanation(
             merchant_data=merchant.dict(),
             risk_score=risk_result["score"],
@@ -68,19 +79,20 @@ class Orchestrator:
             decision=decision
         )
         
-        # Step 5: Construct UnderwritingDecision with AI explanation
+        # Step 6: Construct UnderwritingResult with AI explanation and financial offer
         underwriting_decision = UnderwritingDecision(
             merchant_id=merchant.merchant_id,
             risk_score=risk_result["score"],
             risk_tier=risk_tier,
             decision=decision,
-            explanation=ai_explanation
+            explanation=ai_explanation,
+            financial_offer=financial_offer
         )
         
-        # Step 6: Save risk result to database
+        # Step 7: Save risk result to database
         RiskScoreService.create_risk_record(db, underwriting_decision)
         
-        # Step 7: Send WhatsApp notification (non-blocking, doesn't affect API response)
+        # Step 8: Send WhatsApp notification (non-blocking, doesn't affect API response)
         if whatsapp_number:
             try:
                 whatsapp_service = WhatsAppService()
@@ -103,5 +115,5 @@ class Orchestrator:
                 )
                 # Do not raise - API response should not be affected by WhatsApp failure
         
-        # Step 8: Return decision
+        # Step 9: Return decision
         return underwriting_decision

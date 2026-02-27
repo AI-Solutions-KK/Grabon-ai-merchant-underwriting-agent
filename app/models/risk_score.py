@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Text
 from app.db.base import Base
 
 
@@ -6,7 +6,7 @@ class RiskScore(Base):
     """
     SQLAlchemy model for risk assessment results.
     
-    Stores underwriting decision and risk scoring for a merchant.
+    Stores underwriting decision, risk scoring, and financial offers for a merchant.
     Tracks offer acceptance status for dashboard simulation.
     """
     __tablename__ = "risk_scores"
@@ -17,5 +17,6 @@ class RiskScore(Base):
     risk_tier = Column(String, nullable=False)
     decision = Column(String, nullable=False)
     explanation = Column(String, nullable=False)
+    financial_offer = Column(Text, nullable=True)  # JSON-serialized FinancialOffer (optional)
     offer_status = Column(String, default="PENDING", nullable=False)  # PENDING | ACCEPTED | REJECTED
 
