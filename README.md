@@ -22,6 +22,7 @@
 ## 🏗️ System Architecture
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#000000', 'primaryBorderColor': '#1976D2', 'lineColor': '#1976D2', 'secondBkgColor': '#FFF9C4', 'secondBorderColor': '#F57F17', 'tertiaryColor': '#E8F5E9', 'tertiaryTextColor': '#000000', 'tertiaryBorderColor': '#388E3C', 'fontSize': '13px', 'fontFamily': 'arial'}, 'securityLevel': 'loose'}}%%
 flowchart TD
     subgraph CLIENT["👤 Client Layer"]
         A[Admin / Evaluator Browser]
@@ -184,6 +185,7 @@ Each merchant is fingerprinted across **13 fields** (revenue, GMV, chargeback ra
 ## 🎯 Decision Authority Model
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'primaryColor': '#E8D5F2', 'primaryTextColor': '#000000', 'primaryBorderColor': '#9C27B0', 'lineColor': '#1976D2', 'secondBkgColor': '#FFD9E8', 'secondBorderColor': '#E91E63', 'tertiaryColor': '#C8E6C9', 'tertiaryTextColor': '#000000', 'tertiaryBorderColor': '#4CAF50', 'fontSize': '13px', 'fontFamily': 'arial'}, 'securityLevel': 'loose'}}%%
 flowchart LR
     RE[Risk Engine\n13 deterministic rules\nOutputs: score 0-100 + flags]
     AI[Claude AI Agent\nOutputs: recommendation + narrative]
@@ -197,6 +199,20 @@ flowchart LR
     DE --> OUT_A
     DE --> OUT_R
     DE --> OUT_C
+    
+    classDef risk fill:#E8D5F2,stroke:#9C27B0,stroke-width:2px,color:#000000
+    classDef ai fill:#FFB3D9,stroke:#E91E63,stroke-width:2px,color:#000000
+    classDef decision fill:#FFF9C4,stroke:#F57F17,stroke-width:2px,color:#000000
+    classDef approved fill:#A5D6A7,stroke:#2E7D32,stroke-width:2px,color:#000000
+    classDef rejected fill:#FFCDD2,stroke:#D32F2F,stroke-width:2px,color:#000000
+    classDef conditional fill:#FFE0B2,stroke:#F57C00,stroke-width:2px,color:#000000
+    
+    class RE risk
+    class AI ai
+    class DE decision
+    class OUT_A approved
+    class OUT_R rejected
+    class OUT_C conditional
 ```
 
 **Only the Decision Engine produces final outcomes.** Risk Engine and Claude AI are inputs only — this eliminates distributed decision ambiguity and ensures full auditability.
