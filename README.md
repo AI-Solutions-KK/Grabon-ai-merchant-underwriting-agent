@@ -1,6 +1,6 @@
 ﻿# 🤖 GrabOn AI Merchant Underwriting Agent
 
-![project-snap](project-snap.jpeg)
+![project-snap](snap-updated.jpeg)
 
 > **Production-deployed** AI underwriting system — deterministic scoring, Claude AI decisions, and real WhatsApp offer delivery.
 > Live at → **[huggingface.co/spaces/AI-Solutions-KK/grabon-ai-merchant-underwriting-agent](https://huggingface.co/spaces/AI-Solutions-KK/grabon-ai-merchant-underwriting-agent)**
