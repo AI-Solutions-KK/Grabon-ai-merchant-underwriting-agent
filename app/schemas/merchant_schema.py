@@ -15,7 +15,12 @@ class MerchantInput(BaseModel):
     
     # Legacy required fields
     monthly_revenue: float = Field(..., gt=0, description="Monthly revenue in currency units")
-    credit_score: int = Field(..., ge=300, le=850, description="Credit score (300-850)")
+    credit_score: Optional[int] = Field(
+        default=None,
+        ge=300,
+        le=850,
+        description="Optional legacy field. If provided, system still computes and uses profile-derived credit score."
+    )
     years_in_business: int = Field(..., ge=0, description="Number of years the business has been operating")
     existing_loans: int = Field(..., ge=0, description="Number of existing loans")
     past_defaults: int = Field(..., ge=0, description="Number of past defaults")
@@ -76,7 +81,6 @@ class MerchantInput(BaseModel):
                 "merchant_id": "MERCH_12345",
                 "category": "Electronics",
                 "monthly_revenue": 50000.0,
-                "credit_score": 750,
                 "years_in_business": 5,
                 "existing_loans": 2,
                 "past_defaults": 0,

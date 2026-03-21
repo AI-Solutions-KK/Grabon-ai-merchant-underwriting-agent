@@ -5,6 +5,8 @@ from app.db.session import engine, SessionLocal
 from app.models.merchant import Merchant
 from app.models.risk_score import RiskScore
 from app.models.system_config import SystemConfig
+from app.engines.credit_engine import CreditEngine
+from app.schemas.merchant_schema import MerchantInput
 
 # Fixed 10-merchant dataset for evaluator demo
 # Tier distribution: Tier 1 × 6, Tier 2 × 2, Tier 3 REJECTED × 2 (M004, M006)
@@ -163,7 +165,29 @@ def _seed_merchants():
             # Always sync fields so profile updates propagate on restart
             merchant.category               = data["category"]
             merchant.monthly_revenue        = data["monthly_revenue"]
-            merchant.credit_score           = data["credit_score"]
+            computed_credit = CreditEngine.calculate_credit_score(
+                MerchantInput(
+                    merchant_id=data["merchant_id"],
+                    category=data["category"],
+                    monthly_revenue=data["monthly_revenue"],
+                    years_in_business=data["years_in_business"],
+                    existing_loans=data["existing_loans"],
+                    past_defaults=data["past_defaults"],
+                    gmv=data["monthly_revenue"] * 1.2,
+                    refund_rate=data["refund_rate"],
+                    chargeback_rate=data["chargeback_rate"],
+                    avg_order_value=data["avg_order_value"],
+                    unique_customer_count=data["unique_customer_count"],
+                    customer_return_rate=data["customer_return_rate"],
+                    coupon_redemption_rate=data["coupon_redemption_rate"],
+                    seasonality_index=data["seasonality_index"],
+                    deal_exclusivity_rate=data["deal_exclusivity_rate"],
+                    return_and_refund_rate=data["return_and_refund_rate"],
+                    monthly_gmv_12m=data["monthly_gmv_12m"],
+                )
+            )
+
+            merchant.credit_score           = computed_credit
             merchant.years_in_business      = data["years_in_business"]
             merchant.existing_loans         = data["existing_loans"]
             merchant.past_defaults          = data["past_defaults"]

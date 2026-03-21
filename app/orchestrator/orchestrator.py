@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Optional
 from sqlalchemy.orm import Session
+from app.engines.credit_engine import CreditEngine
 from app.engines.risk_engine import RiskEngine
 from app.engines.decision_engine import DecisionEngine
 from app.engines.offer_engine import OfferEngine
@@ -59,6 +60,11 @@ class Orchestrator:
         Returns:
             UnderwritingResult: Structured underwriting result with AI explanation and financial offer
         """
+        # Step 0: Deterministically compute credit score from merchant profile
+        # (input credit_score is not trusted as final scoring source)
+        computed_credit_score = CreditEngine.calculate_credit_score(merchant)
+        merchant = merchant.model_copy(update={"credit_score": computed_credit_score})
+
         # Step 1: Save merchant to database
         MerchantService.create_merchant(db, merchant)
         
@@ -68,16 +74,18 @@ class Orchestrator:
         # Step 3: Evaluate decision based on risk result
         risk_tier, decision, _ = DecisionEngine.evaluate(risk_result)
         
+        merchant_data = merchant.model_dump()
+
         # Step 4: Calculate financial offer based on mode
         financial_offer = OfferEngine.calculate_financial_offer(
             risk_tier=risk_tier,
-            merchant_data=merchant.dict(),
+            merchant_data=merchant_data,
             mode=mode
         )
         
         # Step 5: Generate Claude AI explanation (with automatic fallback)
         ai_explanation = ClaudeUnderwritingAgent.generate_explanation(
-            merchant_data=merchant.dict(),
+            merchant_data=merchant_data,
             risk_score=risk_result["score"],
             risk_tier=risk_tier,
             decision=decision,

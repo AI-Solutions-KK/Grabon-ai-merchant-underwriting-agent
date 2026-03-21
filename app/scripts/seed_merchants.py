@@ -1,9 +1,9 @@
 """
-Production seeding script: 10 merchants with realistic distribution.
+Production seeding script: 11 merchants with realistic distribution.
 
 Distribution:
 - Tier 1 (APPROVED): 3 merchants with high credit (760+), high revenue (80k+)
-- Tier 2 (APPROVED_WITH_CONDITIONS): 3 merchants with mid credit (650-720), mid revenue (30k-60k)
+- Tier 2 (APPROVED_WITH_CONDITIONS): 4 merchants with mid credit (650-720), mid revenue (30k-60k)
 - Tier 3 (REJECTED): 2 merchants with poor metrics
 - Auto-Reject: 2 merchants with hard failures (credit < 550 OR defaults >= 3)
 """
@@ -29,25 +29,26 @@ load_dotenv()
 def seed_merchants():
     """Seed 10 merchants with realistic distribution."""
     
-    # Merchant configurations: (id, name, monthly_revenue, credit_score, years, loans, defaults, gmv, refund_rate, chargeback_rate)
+    # Merchant configurations: (id, name, monthly_revenue, years, loans, defaults, gmv, refund_rate, chargeback_rate)
     merchants_config = [
         # TIER 1 - APPROVED (high credit, high revenue, 0 defaults)
-        ("PROD_T1_001", "Premium Fintech Solutions", 120000, 795, 8, 0, 0, 180000, 0.02, 0.01),  # Excellent metrics
-        ("PROD_T1_002", "Elite Retail Group", 95000, 780, 6, 1, 0, 150000, 0.03, 0.02),  # Low refund/chargeback
-        ("PROD_T1_003", "Established Services Inc", 110000, 765, 7, 0, 0, 160000, 0.04, 0.015),  # Good metrics
+        ("PROD_T1_001", "Premium Fintech Solutions", 120000, 8, 0, 0, 180000, 0.02, 0.01),  # Excellent metrics
+        ("PROD_T1_002", "Elite Retail Group", 95000, 6, 1, 0, 150000, 0.03, 0.02),  # Low refund/chargeback
+        ("PROD_T1_003", "Established Services Inc", 110000, 7, 0, 0, 160000, 0.04, 0.015),  # Good metrics
         
         # TIER 2 - APPROVED_WITH_CONDITIONS (mid credit, mid revenue)
-        ("PROD_T2_001", "Growing Tech Startup", 50000, 715, 4, 2, 0, 75000, 0.08, 0.03),  # Moderate refund
-        ("PROD_T2_002", "Mid-Market Retail Co", 45000, 690, 3, 3, 1, 60000, 0.12, 0.05),  # Elevated concerns
-        ("PROD_T2_003", "Development Agency", 60000, 700, 5, 1, 0, 85000, 0.06, 0.025),  # Below-average refund
+        ("PROD_T2_001", "Growing Tech Startup", 50000, 4, 2, 0, 75000, 0.08, 0.03),  # Moderate refund
+        ("PROD_T2_002", "Mid-Market Retail Co", 45000, 3, 3, 1, 60000, 0.12, 0.05),  # Elevated concerns
+        ("PROD_T2_003", "Development Agency", 60000, 5, 1, 0, 85000, 0.06, 0.025),  # Below-average refund
+        ("PROD_T2_004", "Urban Food Kitchen", 55000, 4, 2, 0, 78000, 0.09, 0.04),  # Restaurant with seasonal patterns
         
         # TIER 3 - REJECTED (low revenue, multiple issues)
-        ("PROD_T3_001", "Early Stage Platform", 15000, 640, 1, 4, 2, 20000, 0.25, 0.08),  # High refund
-        ("PROD_T3_002", "Struggling Service Co", 20000, 630, 2, 5, 1, 25000, 0.35, 0.12),  # Very high refund/chargeback
+        ("PROD_T3_001", "Early Stage Platform", 15000, 1, 4, 2, 20000, 0.25, 0.08),  # High refund
+        ("PROD_T3_002", "Struggling Service Co", 20000, 2, 5, 1, 25000, 0.35, 0.12),  # Very high refund/chargeback
         
         # AUTO-REJECT - MANDATORY FAILURES
-        ("PROD_AR_001", "Borderline Bad Credit", 30000, 545, 3, 0, 0, 40000, 0.05, 0.02),  # Credit < 550
-        ("PROD_AR_002", "Default Heavy Vendor", 25000, 600, 2, 2, 3, 35000, 0.40, 0.15),   # Defaults >= 3, plus high risk metrics
+        ("PROD_AR_001", "Borderline Bad Credit", 30000, 3, 0, 0, 40000, 0.05, 0.02),
+        ("PROD_AR_002", "Default Heavy Vendor", 25000, 2, 2, 3, 35000, 0.40, 0.15),
     ]
     
     # Database session
@@ -55,18 +56,17 @@ def seed_merchants():
     orchestrator = Orchestrator()
     
     print("\n" + "=" * 80)
-    print("PRODUCTION SEEDING: 10 MERCHANTS")
+    print("PRODUCTION SEEDING: 11 MERCHANTS")
     print("=" * 80 + "\n")
     
     try:
-        for merchant_id, merchant_name, revenue, credit, years, loans, defaults, gmv, refund_rate, chargeback_rate in merchants_config:
+        for merchant_id, merchant_name, revenue, years, loans, defaults, gmv, refund_rate, chargeback_rate in merchants_config:
             print(f"[SEEDING] {merchant_id}: {merchant_name}")
             
             # Create merchant input
             merchant_input = MerchantInput(
                 merchant_id=merchant_id,
                 monthly_revenue=revenue,
-                credit_score=credit,
                 years_in_business=years,
                 existing_loans=loans,
                 past_defaults=defaults,

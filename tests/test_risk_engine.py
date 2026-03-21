@@ -54,7 +54,7 @@ class TestRiskEngine:
         result = RiskEngine.evaluate_risk(merchant)
         
         assert result["auto_reject"] is True
-        assert "defaults" in result["reason"].lower()
+        assert "default" in result["reason"].lower()
         assert result["score"] == 0
 
     def test_moderate_case_score_in_range(self):

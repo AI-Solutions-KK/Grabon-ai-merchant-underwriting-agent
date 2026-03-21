@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.merchant import Merchant
+from app.engines.credit_engine import CreditEngine
 from app.schemas.merchant_schema import MerchantInput
 
 
@@ -13,24 +14,53 @@ class MerchantService:
     @staticmethod
     def create_merchant(db: Session, merchant_input: MerchantInput) -> Merchant:
         """
-        Upsert a merchant record.  If the merchant_id already exists, the
-        existing row is returned unchanged (preserving mobile_number, secure_token
-        etc.).  Only a genuinely new merchant triggers an INSERT.
+        Upsert a merchant record.
+
+        Existing merchant rows are updated with the latest profile fields while
+        preserving secure_token/mobile_number unless explicitly changed elsewhere.
+        Credit score is always treated as profile-derived and persisted from the
+        provided input payload (already computed by orchestration layer).
         """
-        # Check if merchant already exists — return early if so
+        derived_credit_score = (
+            merchant_input.credit_score
+            if merchant_input.credit_score is not None
+            else CreditEngine.calculate_credit_score(merchant_input)
+        )
+
+        # Check if merchant already exists — update in-place if so
         existing = db.query(Merchant).filter(
             Merchant.merchant_id == merchant_input.merchant_id
         ).first()
         if existing:
+            existing.monthly_revenue = merchant_input.monthly_revenue
+            existing.credit_score = derived_credit_score
+            existing.years_in_business = merchant_input.years_in_business
+            existing.existing_loans = merchant_input.existing_loans
+            existing.past_defaults = merchant_input.past_defaults
+            existing.gmv = getattr(merchant_input, 'gmv', 0.0)
+            existing.refund_rate = getattr(merchant_input, 'refund_rate', 0.0)
+            existing.chargeback_rate = getattr(merchant_input, 'chargeback_rate', 0.0)
+            existing.category = getattr(merchant_input, 'category', None)
+            existing.monthly_gmv_12m = getattr(merchant_input, 'monthly_gmv_12m', [])
+            existing.coupon_redemption_rate = getattr(merchant_input, 'coupon_redemption_rate', 0.0)
+            existing.unique_customer_count = getattr(merchant_input, 'unique_customer_count', 0)
+            existing.customer_return_rate = getattr(merchant_input, 'customer_return_rate', 0.0)
+            existing.avg_order_value = getattr(merchant_input, 'avg_order_value', 0.0)
+            existing.seasonality_index = getattr(merchant_input, 'seasonality_index', 1.0)
+            existing.deal_exclusivity_rate = getattr(merchant_input, 'deal_exclusivity_rate', 0.0)
+            existing.return_and_refund_rate = getattr(merchant_input, 'return_and_refund_rate', 0.0)
+            db.commit()
+            db.refresh(existing)
             return existing
 
         db_merchant = Merchant(
             merchant_id=merchant_input.merchant_id,
             monthly_revenue=merchant_input.monthly_revenue,
-            credit_score=merchant_input.credit_score,
+            credit_score=derived_credit_score,
             years_in_business=merchant_input.years_in_business,
             existing_loans=merchant_input.existing_loans,
             past_defaults=merchant_input.past_defaults,
+            gmv=getattr(merchant_input, 'gmv', 0.0),
             # Behavioral fields
             category=getattr(merchant_input, 'category', None),
             monthly_gmv_12m=getattr(merchant_input, 'monthly_gmv_12m', []),
