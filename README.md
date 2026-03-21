@@ -1,21 +1,23 @@
-﻿---
-# 🤖 GrabOn AI Merchant Underwriting Agent
+﻿# 🤖 GrabOn AI Merchant Underwriting Agent
 
 ![project-snap](project-snap.jpeg)
-> **Production-deployed** AI underwriting system — deterministic scoring, Claude AI explanations, and optional WhatsApp offer delivery.
+
+> **Production-deployed** AI underwriting system — deterministic scoring, Claude AI decisions, and real WhatsApp offer delivery.
 > Live at → **[huggingface.co/spaces/AI-Solutions-KK/grabon-ai-merchant-underwriting-agent](https://huggingface.co/spaces/AI-Solutions-KK/grabon-ai-merchant-underwriting-agent)**
 
 ---
 
-## ✅ Latest Update (Final) — Profile-Derived Credit Score
+## ✅ Latest Update — Deterministic Profile-Derived Credit Scoring
 
-Underwriting flow is now strictly deterministic and profile-driven:
+The pipeline now computes `credit_score` directly from merchant profile inputs (bank-style weighted model), then feeds risk and decision engines.
+
+### New underwriting flow
 
 ```text
 Merchant Profile (API / Seed / SQL)
         │
         ▼
-[1] CreditEngine (bank-style weighted model)
+[1] CreditEngine (weighted deterministic model)
     → credit_score: 300–850
         │
         ▼
@@ -23,8 +25,7 @@ Merchant Profile (API / Seed / SQL)
     → risk_score: 0–100
         │
         ▼
-[3] DecisionEngine
-    → Tier 1 / Tier 2 / Tier 3
+[3] DecisionEngine (single authority)
     → APPROVED / APPROVED_WITH_CONDITIONS / REJECTED
         │
         ▼
@@ -34,7 +35,7 @@ Merchant Profile (API / Seed / SQL)
 [5] Persist + Optional WhatsApp
 ```
 
-### Credit score formula (deterministic, no randomness)
+### Credit score formula
 
 Let factor scores be in $[0,100]$:
 
@@ -52,10 +53,10 @@ $$
 credit\_score = clamp(300 + 5.5W,\ 300,\ 850)
 $$
 
-Implementation guarantees:
-- Input `credit_score` is accepted for backward compatibility but overwritten by orchestrator Step 0.
-- Seed/batch/monitor flows rebuild `MerchantInput` with `credit_score=None` so score is always recomputed.
-- Monitor fingerprint excludes stored `credit_score` (it is output, not trigger input).
+Implementation notes:
+- Incoming `credit_score` is accepted for compatibility but recomputed in orchestrator Step 0.
+- Seed, monitor, and batch flows rebuild input with `credit_score=None`.
+- Monitor fingerprint excludes `credit_score` (derived output).
 
 ---
 
@@ -65,61 +66,171 @@ Implementation guarantees:
 
 | Step | Action |
 |------|--------|
-| **1. Join Sandbox** | Scan dashboard QR or send `join shop-observe` to **+1 415 523 8886** on WhatsApp |
-| **2. Add Your Number** | On dashboard click ✏️ next to an approved merchant and save your number |
-| **3. Run Engine** | Click **▶ Run Once** — approved merchant gets offer message |
+| **1. Join Sandbox** | Scan the QR code on the dashboard or send `join shop-observe` to **+1 415 523 8886** on WhatsApp |
+| **2. Add Your Number** | On the dashboard, click ✏️ next to any approved merchant and enter your number |
+| **3. Run Engine** | Click **▶ Run Once** — if the merchant is APPROVED, you'll receive a live WhatsApp offer message |
 
 ---
 
 ## 🏗️ System Architecture
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#000000', 'primaryBorderColor': '#1976D2', 'lineColor': '#1976D2', 'secondBkgColor': '#FFF9C4', 'secondBorderColor': '#F57F17', 'tertiaryColor': '#E8F5E9', 'tertiaryTextColor': '#000000', 'tertiaryBorderColor': '#388E3C', 'fontSize': '13px', 'fontFamily': 'arial'}, 'securityLevel': 'loose'}}%%
 flowchart TD
-    A[Dashboard/Admin] --> O[Orchestrator]
-    O --> C[CreditEngine\n300-850]
-    O --> R[RiskEngine\n0-100]
-    O --> D[DecisionEngine\nTier + Decision]
-    O --> F[OfferEngine]
-    O --> L[Claude Agent\nExplanation]
-    O --> DB[(SQLite)]
-    O --> W[WhatsApp Service]
+    subgraph CLIENT["👤 Client Layer"]
+        A[Admin / Evaluator Browser]
+        WA[📱 WhatsApp User]
+    end
+
+    subgraph API["🌐 API Layer — FastAPI"]
+        R[routes.py\nREST API]
+        D[dashboard.py\nAdmin Dashboard]
+        ADM[admin.py\nEngine Controls]
+    end
+
+    subgraph ORCH["🎯 Orchestration Layer"]
+        ORC[Orchestrator\norchestrator.py]
+    end
+
+    subgraph ENGINES["⚙️ Engine Layer"]
+        CE[Credit Engine\nDeterministic\n300-850]
+        RE[Risk Engine\nDeterministic Scoring\n13 Business Rules]
+        DE[Decision Engine\nApprove / Reject /\nConditional]
+        OE[Offer Engine\nCredit + Insurance\nOffer Builder]
+        UA[Claude AI Agent\nLLM Explanation +\nRisk Narrative]
+    end
+
+    subgraph SERVICES["🔧 Service Layer"]
+        MS[Merchant Service]
+        ES[Engine Service\nBatch Processor]
+        MON[Monitor Service\nBackground Thread\nMD5 Change Detection]
+        WAS[WhatsApp Service\nTwilio + retry logic]
+        CS[Config Service\nEngine State + Cache]
+        APP[Application Service\nRisk Score Persistence]
+        AGT[Underwriting Agent\nClaude API Wrapper]
+    end
+
+    subgraph DB["🗄️ Data Layer — SQLite"]
+        M[(merchants)]
+        RS[(risk_scores)]
+        SC[(system_config\nEngine state +\nFingerprints)]
+    end
+
+    subgraph INFRA["☁️ Infrastructure"]
+        TW[Twilio\nWhatsApp Sandbox]
+        ANT[Anthropic\nClaude 3.5 Sonnet]
+        HF[Hugging Face Spaces\nDocker Container]
+    end
+
+    A -->|HTTP| D
+    A -->|HTTP| ADM
+    WA -->|receives offer| TW
+
+    D --> ORC
+    ADM --> MON
+    ADM --> ES
+
+    ORC --> CE
+    CE --> RE
+    ORC --> DE
+    ORC --> OE
+    ORC --> UA
+
+    RE --> ES
+    DE --> ES
+    OE --> ES
+    UA --> AGT
+
+    ES --> MON
+    MON --> WAS
+    MON --> CS
+    MON --> APP
+
+    WAS --> TW
+    AGT --> ANT
+
+    MS --> M
+    APP --> RS
+    CS --> SC
+    ES --> RS
+
+    HF --> API
 ```
 
 ---
 
-## 🎯 Decision Logic
+## 🚀 Overview
 
-Hard reject rules:
-- `credit_score < 550`
-- `past_defaults >= 3`
+This system automates merchant underwriting for **GrabCredit** and **GrabInsure** products. It takes raw merchant data, computes a deterministic credit score from profile signals, runs risk scoring, gets an AI-generated explanation from Claude, makes a final credit/insurance offer decision, and can deliver the offer directly to the merchant via **WhatsApp**.
 
-Otherwise:
-- `score >= 75` → Tier 1 → APPROVED
-- `50 <= score < 75` → Tier 2 → APPROVED_WITH_CONDITIONS
-- `score < 50` → Tier 3 → REJECTED
-
----
-
-## 🌟 Key Features
-
-- Deterministic profile-derived credit score (`CreditEngine`)
-- Weighted risk scoring + hard rules (`RiskEngine`)
-- Single decision authority (`DecisionEngine`)
-- DB fingerprint change detection (`MonitorService`)
-- Batch + always-on engine modes
-- Optional WhatsApp offer delivery
-- Dockerized and HF deploy-ready
+### What makes this production-grade (not a demo)
+- ✅ Real WhatsApp delivery via Twilio sandbox
+- ✅ Real Claude AI calls
+- ✅ Persistent SQLite DB
+- ✅ MD5 fingerprint change detection
+- ✅ Background daemon engine with 60s polling (`ALWAYS_ON` mode)
+- ✅ Dockerized and deployed on Hugging Face Spaces
+- ✅ Idempotent runs (no spam on unchanged merchants)
 
 ---
 
-## 🗂️ Important Files
+## 🔄 Decision Flow
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant Dashboard
+    participant Orchestrator
+    participant CreditEngine
+    participant RiskEngine
+    participant DecisionEngine
+    participant OfferEngine
+    participant ClaudeAI
+    participant MonitorService
+    participant WhatsAppService
+    participant Merchant
+
+    Admin->>Dashboard: Click "Run Once"
+    Dashboard->>MonitorService: POST /admin/engine/on
+    MonitorService->>Orchestrator: process_merchant(id)
+    Orchestrator->>CreditEngine: calculate_credit_score(profile)
+    CreditEngine-->>Orchestrator: credit_score (300-850)
+    Orchestrator->>RiskEngine: score(merchant_data + credit_score)
+    RiskEngine-->>Orchestrator: RiskProfile {score, flags, tier}
+    Orchestrator->>ClaudeAI: explain(risk_profile)
+    ClaudeAI-->>Orchestrator: AI narrative
+    Orchestrator->>DecisionEngine: decide(risk_profile + ai_rec)
+    DecisionEngine-->>Orchestrator: APPROVED / REJECTED / CONDITIONAL
+    Orchestrator->>OfferEngine: build_offer(decision)
+    OfferEngine-->>Orchestrator: CreditOffer + InsuranceOffer
+    Orchestrator-->>MonitorService: UnderwritingDecision
+    MonitorService->>WhatsAppService: send_offer(merchant_number)
+    WhatsAppService-->>Merchant: 📱 WhatsApp message delivered
+    MonitorService-->>Dashboard: stats {processed, approved, wa_sent, ...}
+```
+
+---
+
+## ⚙️ Engine Modes
+
+| Mode | Behaviour |
+|------|-----------|
+| **▶ Run Once** | Synchronous single-pass. Clears cache → processes merchants → returns summary. |
+| **∞ Always ON** | Background daemon polls every 60 seconds; re-processes changed merchants only. |
+| **⏹ OFF** | Stops background thread immediately. |
+| **Clear Cache** | Clears fingerprints + resets `whatsapp_status`. |
+
+---
+
+## 🗂 Project Structure (Core Files)
 
 - `app/engines/credit_engine.py`
 - `app/engines/risk_engine.py`
 - `app/engines/decision_engine.py`
+- `app/engines/offer_engine.py`
 - `app/orchestrator/orchestrator.py`
-- `app/services/merchant_service.py`
 - `app/services/monitor_service.py`
+- `app/services/merchant_service.py`
 - `app/services/engine_service.py`
 - `app/db/init_db.py`
 - `app/scripts/seed_merchants.py`
@@ -129,14 +240,14 @@ Otherwise:
 
 ## 🧪 Verification
 
-Targeted regression suite passes:
+Focused regression tests include:
 
 - `tests/test_credit_engine.py`
 - `tests/test_orchestrator_credit_auto.py`
 - `tests/test_risk_engine.py`
 - `tests/test_decision_engine.py`
 
-Result: **17 passed**.
+Latest result: **17 passed**.
 
 ---
 
@@ -146,7 +257,7 @@ Use root launcher:
 
 - `run_dashboard.bat`
 
-It uses existing `.venv`, starts Uvicorn at `http://localhost:8000`, and opens:
+This uses existing `.venv`, starts Uvicorn at `http://localhost:8000`, and opens:
 
 - `http://localhost:8000/dashboard/`
 
@@ -169,4 +280,4 @@ Apache 2.0
 
 ---
 
-*Built for GrabOn AI Engineering Assignment — deterministic, auditable underwriting pipeline.*
+*Built for GrabOn AI Engineering Assignment — production-deployed, deterministic, auditable underwriting pipeline.*
